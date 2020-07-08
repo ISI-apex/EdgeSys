@@ -1,0 +1,38 @@
+Bolt1:
+  instances: 2
+  streams:
+    default:
+      fields:
+        - id
+        - temp
+      targets:
+        bolt2: 
+          type: fields
+          fieldIndices: 
+            - 0 
+            - 1
+        bolt3:
+          type: shuffle
+    command:
+      fields: 
+        - command
+        - argument
+      targets:
+        bolt3:
+          type: shuffle
+        bolt4:
+          type: shuffle
+
+Bolt2:
+  instances: 5
+  streams:
+    default:
+      fields: 
+        - id
+        - result
+      targets:
+        bolt3:
+          type: shuffle
+        bolt4:
+          type: shuffle
+

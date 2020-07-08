@@ -1,0 +1,29 @@
+detectFaces:
+  instances: 3
+  streams:
+    default:
+      fields: [IMAGE_ID, IMAGE_MODE, RAW_IMAGE_MAT, FACES_RECT_ARRAYLIST]
+      targets:
+        imageMark: {type: shuffle}
+imageWrite:
+  instances: 3
+  streams:
+    default:
+      fields: [IMAGE_ID, IMAGE_MODE]
+      targets:
+        printBolt: {type: shuffle}
+imageMark:
+  instances: 3
+  streams:
+    default:
+      fields: [IMAGE_ID, IMAGE_MODE, RAW_IMAGE_MAT, RESULT_IMAGE]
+      targets:
+        imageWrite:
+          type: fields
+          targetFields: [IMAGE_ID, IMAGE_MODE, RAW_IMAGE_MAT, RESULT_IMAGE]
+printBolt:
+  instances: 3
+  streams:
+    defaultStream:
+      fields: []
+      targets: {}

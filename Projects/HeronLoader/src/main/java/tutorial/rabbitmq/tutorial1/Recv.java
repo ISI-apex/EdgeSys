@@ -1,0 +1,32 @@
+package tutorial.rabbitmq.tutorial1;
+
+import com.rabbitmq.client.Channel;
+import com.rabbitmq.client.Connection;
+import com.rabbitmq.client.ConnectionFactory;
+import com.rabbitmq.client.DeliverCallback;
+
+public class Recv {
+  private static final String QUEUE_NAME = "hello";
+
+  public static void main(String[] argv) throws Exception {
+
+    // Create connection and channel
+    ConnectionFactory factory = new ConnectionFactory();
+    factory.setHost("localhost");
+    Connection connection = factory.newConnection();
+    Channel channel = connection.createChannel();
+
+    // Declare queue so that it exists before we consume from it
+    channel.queueDeclare(QUEUE_NAME, false, false, false, null);
+    System.out.println(" [*] Waiting for messages. To exit press CTRL+C");
+
+    DeliverCallback deliverCallback =
+        (consumerTag, delivery) -> {
+          String message = new String(delivery.getBody(), "UTF-8");
+          System.out.println(" [x] Received '" + message + "'");
+        };
+    channel.basicConsume(QUEUE_NAME, true, deliverCallback, consumerTag -> {});
+
+    System.out.println("Hello");
+  }
+}

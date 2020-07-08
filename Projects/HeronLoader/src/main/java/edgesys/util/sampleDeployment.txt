@@ -1,0 +1,11 @@
+java -cp "JARFILE" edgesys.EdgeSysHeronExecutor OPERATOR_NAME INDEX
+
+
+java -cp "JARFILE" edgesys.EdgeSysHeronExecutor examples.videoEdgeWorkload.DetectFacesBolt OPERATOR_NAME 0
+java -cp "JARFILE" edgesys.EdgeSysHeronExecutor examples.videoEdgeWorkload.DetectFacesBolt OPERATOR_NAME 1
+java -cp "JARFILE" edgesys.EdgeSysHeronExecutor examples.videoEdgeWorkload.DetectFacesBolt OPERATOR_NAME 2
+java -cp "JARFILE" edgesys.EdgeSysHeronExecutor examples.videoEdgeWorkload.DetectFacesBolt OPERATOR_NAME 3
+
+java -cp "JARFILE" edgesys.EdgeSysHeronExecutor examples.videoEdgeWorkload.ImageMarkBolt OPERATOR_NAME 0
+java -cp "JARFILE" edgesys.EdgeSysHeronExecutor examples.videoEdgeWorkload.ImageMarkBolt OPERATOR_NAME 1
+java -cp "JARFILE" edgesys.EdgeSysHeronExecutor examples.videoEdgeWorkload.ImageMarkBolt OPERATOR_NAME 2
