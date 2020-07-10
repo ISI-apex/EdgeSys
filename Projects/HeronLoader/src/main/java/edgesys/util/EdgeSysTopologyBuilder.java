@@ -19,6 +19,11 @@ import com.twitter.heron.api.tuple.Fields;
 import com.twitter.heron.api.tuple.Tuple;
 import com.twitter.heron.api.utils.Utils;
 import java.io.FileWriter;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Map;
@@ -45,19 +50,41 @@ class EdgeSysTopologyBuilder extends TopologyBuilder {
       System.out.format("\t%-15s%-50s%-15s\n", tempInfo.name, tempInfo.className, tempInfo.idx);
     }
 
-    // Write out deployment commands
-    for (int i = 0; i < deploymentInfos.size(); ++i) {
-      tempInfo = deploymentInfos.get(i);
-      // TODO: write deployment commands to file
-      System.out.println(
-          "java -cp \"JAR_FILE\" edgesys.EdgeSysHeronExecutor"
-              + tempInfo.className
-              + " "
-              + tempInfo.name
-              + " "
-              + tempInfo.idx
-              + " ");
+    // Write out deployment commands to file
+    FileWriter fileWriter;
+    try {
+      fileWriter = new FileWriter("testOutputCommands.txt");
+      PrintWriter printWriter = new PrintWriter(fileWriter);
+      // printWriter.print("Some String");
+      // printWriter.printf("Product name is %s and its price is %d $", "iPhone", 1000);
+      for (int i = 0; i < deploymentInfos.size(); ++i) {
+        tempInfo = deploymentInfos.get(i);
+        printWriter.print(
+          "java -cp \"JAR_FILE\" edgesys.EdgeSysHeronExecutor "
+          + tempInfo.className
+          + " "
+          + tempInfo.name
+          + " "
+          + tempInfo.idx
+          + " "
+        );
+        // System.out.println(
+        //     "java -cp \"JAR_FILE\" edgesys.EdgeSysHeronExecutor "
+        //         + tempInfo.className
+        //         + " "
+        //         + tempInfo.name
+        //         + " "
+        //         + tempInfo.idx
+        //         + " "
+        //         );
+      }
+      printWriter.close();
+    } catch (IOException e1) {
+      // TODO Auto-generated catch block
+      System.out.println("Error writing commands to file");
+      e1.printStackTrace();
     }
+    
 
     // Build targets for streams
 
@@ -66,56 +93,63 @@ class EdgeSysTopologyBuilder extends TopologyBuilder {
     String output = yaml2.dump(runTimeConfig);
     System.out.println(output);
 
-    for(DelegateBoltDeclarer boltDeclarer:tempBoltDeclarers) {
-      for(LinkedList<String> shuffleGrouping: boltDeclarer.shuffleGroupings) {
+    for (DelegateBoltDeclarer boltDeclarer : tempBoltDeclarers) {
+      for (LinkedList<String> shuffleGrouping : boltDeclarer.shuffleGroupings) {
         System.out.println(shuffleGrouping);
 
         // Store shuffle groupings
         HashMap<String, String> tempShuffleTarget = new HashMap<String, String>();
-        tempShuffleTarget.put("type","shuffle");
+        tempShuffleTarget.put("type", "shuffle");
 
-        if(runTimeConfig.containsKey(shuffleGrouping.get(0))) {
+        if (runTimeConfig.containsKey(shuffleGrouping.get(0))) {
           @SuppressWarnings("unchecked")
-          HashMap<String, Object> targetConfig = ((HashMap<String, Object>)runTimeConfig.get(shuffleGrouping.get(0)));
+          HashMap<String, Object> targetConfig =
+              ((HashMap<String, Object>) runTimeConfig.get(shuffleGrouping.get(0)));
 
           @SuppressWarnings("unchecked")
-          HashMap<String, Object> streamConfigs = ((HashMap<String,Object>)targetConfig.get("streams"));
-  
+          HashMap<String, Object> streamConfigs =
+              ((HashMap<String, Object>) targetConfig.get("streams"));
+
           @SuppressWarnings("unchecked")
-          HashMap<String, Object> streamConfig = ((HashMap<String,Object>)streamConfigs.get(shuffleGrouping.get(1)));
-  
+          HashMap<String, Object> streamConfig =
+              ((HashMap<String, Object>) streamConfigs.get(shuffleGrouping.get(1)));
+
           @SuppressWarnings("unchecked")
-          HashMap<String, Object> targetConfigs = ((HashMap<String, Object>)streamConfig.get("targets"));
-          targetConfigs.put(boltDeclarer.name, tempShuffleTarget);  
+          HashMap<String, Object> targetConfigs =
+              ((HashMap<String, Object>) streamConfig.get("targets"));
+          targetConfigs.put(boltDeclarer.name, tempShuffleTarget);
         } else {
           System.out.println("Skipping " + shuffleGrouping.get(0) + " as it must be a spout");
         }
       }
 
-      for(LinkedList<Object> fieldsGrouping: boltDeclarer.fieldsGroupings) {
+      for (LinkedList<Object> fieldsGrouping : boltDeclarer.fieldsGroupings) {
         System.out.println(fieldsGrouping);
         HashMap<String, Object> tempFieldsTarget = new HashMap<String, Object>();
-        tempFieldsTarget.put("type","fields");
-        tempFieldsTarget.put("targetFields",fieldsGrouping.get(2));
+        tempFieldsTarget.put("type", "fields");
+        tempFieldsTarget.put("targetFields", fieldsGrouping.get(2));
 
-        if(runTimeConfig.containsKey(fieldsGrouping.get(0))) {
+        if (runTimeConfig.containsKey(fieldsGrouping.get(0))) {
           @SuppressWarnings("unchecked")
-          HashMap<String, Object> targetConfig = ((HashMap<String, Object>)runTimeConfig.get(fieldsGrouping.get(0)));
+          HashMap<String, Object> targetConfig =
+              ((HashMap<String, Object>) runTimeConfig.get(fieldsGrouping.get(0)));
 
           @SuppressWarnings("unchecked")
-          HashMap<String, Object> streamConfigs = ((HashMap<String,Object>)targetConfig.get("streams"));
-  
+          HashMap<String, Object> streamConfigs =
+              ((HashMap<String, Object>) targetConfig.get("streams"));
+
           @SuppressWarnings("unchecked")
-          HashMap<String, Object> streamConfig = ((HashMap<String,Object>)streamConfigs.get(fieldsGrouping.get(1)));
-  
+          HashMap<String, Object> streamConfig =
+              ((HashMap<String, Object>) streamConfigs.get(fieldsGrouping.get(1)));
+
           @SuppressWarnings("unchecked")
-          HashMap<String, Object> targetConfigs = ((HashMap<String, Object>)streamConfig.get("targets"));
-          targetConfigs.put(boltDeclarer.name, tempFieldsTarget);  
+          HashMap<String, Object> targetConfigs =
+              ((HashMap<String, Object>) streamConfig.get("targets"));
+          targetConfigs.put(boltDeclarer.name, tempFieldsTarget);
         } else {
           System.out.println("Skipping " + fieldsGrouping.get(0) + " as it must be a spout");
         }
       }
-
     }
 
     // Write stream targets to configs
@@ -134,13 +168,23 @@ class EdgeSysTopologyBuilder extends TopologyBuilder {
 
   public BoltDeclarer setBolt(String boltName, IRichBolt bolt, Number parallelismHint) {
     // Create delegate declarer: used because groupings are defined later
-    DelegateBoltDeclarer tempBoltDeclarer = new DelegateBoltDeclarer(
-      super.setBolt(boltName, bolt, parallelismHint),
-      boltName
-    );
+    DelegateBoltDeclarer tempBoltDeclarer =
+        new DelegateBoltDeclarer(super.setBolt(boltName, bolt, parallelismHint), boltName);
     tempBoltDeclarers.add(tempBoltDeclarer);
 
     Map<Object, Object> tempObject = new HashMap<Object, Object>();
+
+
+    // Dump serialized instance to file
+    byte[] testArray = Utils.serialize(bolt);
+    try {
+      Path path = Paths.get("serializedBolt-"+boltName+".bin");
+      Files.write(path, testArray);
+    } catch (IOException e) {
+      System.out.println("Error dumping to file");
+      e.printStackTrace();
+    }
+
 
     // Get stream and fields information from bolt
     DelegateOutputFieldsDeclarer tempDeclarer = new DelegateOutputFieldsDeclarer();
@@ -295,13 +339,12 @@ class EdgeSysTopologyBuilder extends TopologyBuilder {
 
     public BoltDeclarer fieldsGrouping(String componentName, String streamId, Fields fields) {
 
-      // TODO: save fields grouping and fields
+      // Save fields grouping and fields
       LinkedList<Object> tempGrouping = new LinkedList<Object>();
       tempGrouping.add(componentName);
       tempGrouping.add(streamId);
       tempGrouping.add(fields.toList());
       fieldsGroupings.add(tempGrouping);
-
 
       // We declare everything as direct grouping so that Heron does not send
       // two tuples, one as direct and one as the "actual" grouping
@@ -396,8 +439,7 @@ class EdgeSysTopologyBuilder extends TopologyBuilder {
   private static class StubComponent implements IRichSpout, IRichBolt {
     private static final long serialVersionUID = 2779421697541595810L;
 
-    public void declareOutputFields(OutputFieldsDeclarer declarer) {
-    }
+    public void declareOutputFields(OutputFieldsDeclarer declarer) {}
 
     public Map<String, Object> getComponentConfiguration() {
       return null;
