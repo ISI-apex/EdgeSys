@@ -3,6 +3,7 @@ package edgesys.util;
 import com.twitter.heron.api.Config;
 import com.twitter.heron.api.HeronSubmitter;
 import com.twitter.heron.api.topology.TopologyBuilder;
+import com.twitter.heron.api.tuple.Fields;
 import com.twitter.heron.api.utils.Utils;
 import com.twitter.heron.simulator.Simulator;
 import edgesys.util.EdgeSysTopologyBuilder;
@@ -12,7 +13,6 @@ import examples.videoEdgeWorkload.ImageMarkBolt;
 import examples.videoEdgeWorkload.ImageWriteBolt;
 import examples.videoEdgeWorkload.PrintDebugBolt;
 import examples.videoEdgeWorkload.tools.WorkloadConstants;
-import com.twitter.heron.api.tuple.Fields;
 
 /** This is a basic example of a Storm topology. */
 public final class TestBuilder {
@@ -23,24 +23,45 @@ public final class TestBuilder {
     TopologyBuilder builder = new EdgeSysTopologyBuilder();
     int parallelism = 3;
 
-    builder.setSpout("imageFetch", new ImageFetchSpout(), parallelism);
-    builder
-        .setBolt("detectFaces", new DetectFacesBolt(), parallelism)
-        .shuffleGrouping("imageFetch", "default");
-    builder
-        .setBolt("imageMark", new ImageMarkBolt(), parallelism)
-        .shuffleGrouping("detectFaces", "default");
+    // builder.setSpout("imageFetch", new ImageFetchSpout(), parallelism);
+    // builder
+    //     .setBolt("detectFaces", new DetectFacesBolt(), parallelism)
+    //     .shuffleGrouping("imageFetch", "default");
+    // builder
+    //     .setBolt("imageMark", new ImageMarkBolt(), parallelism)
+    //     .shuffleGrouping("detectFaces", "default");
     builder
         .setBolt("imageWrite", new ImageWriteBolt(true), parallelism)
         // .shuffleGrouping("imageMark", "default");
-        .fieldsGrouping("imageMark", "default", new Fields(
-          "IMAGE_ID", "IMAGE_MODE", "RAW_IMAGE_MAT", "RESULT_IMAGE"
-        ));
+        .fieldsGrouping(
+            "imageMark",
+            "default",
+            new Fields("IMAGE_ID", "IMAGE_MODE", "RAW_IMAGE_MAT", "RESULT_IMAGE"));
 
     builder
         .setBolt(
             "printBolt", new PrintDebugBolt(true, WorkloadConstants.FIELD_IMAGE_ID), parallelism)
         .shuffleGrouping("imageWrite", "default");
+
+    // builder.setSpout("imageFetch", new ImageFetchSpout(), parallelism);
+    // builder
+    //     .setBolt("detectFaces", new DetectFacesBolt(), parallelism)
+    //     .shuffleGrouping("imageFetch", "default");
+    // builder
+    //     .setBolt("imageMark", new ImageMarkBolt(), parallelism)
+    //     .shuffleGrouping("detectFaces", "default");
+    // builder
+    //     .setBolt("imageWrite", new ImageWriteBolt(true), parallelism)
+    //     // .shuffleGrouping("imageMark", "default");
+    //     .fieldsGrouping(
+    //         "imageMark",
+    //         "default",
+    //         new Fields("IMAGE_ID", "IMAGE_MODE", "RAW_IMAGE_MAT", "RESULT_IMAGE"));
+
+    // builder
+    //     .setBolt(
+    //         "printBolt", new PrintDebugBolt(true, WorkloadConstants.FIELD_IMAGE_ID), parallelism)
+    //     .shuffleGrouping("imageWrite", "default");
 
     Config conf = new Config();
     // conf.setNumAckers(1);
@@ -48,11 +69,6 @@ public final class TestBuilder {
     conf.setDebug(true);
     conf.setMaxSpoutPending(10);
     conf.setMessageTimeoutSecs(600);
-    // conf.put(Config.TOPOLOGY_WORKER_CHILDOPTS, "-XX:+HeapDumpOnOutOfMemoryError");
-    // com.twitter.heron.api.Config.setComponentRam(conf, "spout", ByteAmount.fromGigabytes(0.5));
-    // com.twitter.heron.api.Config.setComponentRam(conf, "bolt", ByteAmount.fromGigabytes(0.5));
-    // com.twitter.heron.api.Config.setContainerDiskRequested(conf, ByteAmount.fromGigabytes(5));
-    // com.twitter.heron.api.Config.setContainerCpuRequested(conf, 5);
 
     System.out.println("About to build");
     builder.createTopology();

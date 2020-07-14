@@ -60,14 +60,21 @@ class EdgeSysTopologyBuilder extends TopologyBuilder {
       for (int i = 0; i < deploymentInfos.size(); ++i) {
         tempInfo = deploymentInfos.get(i);
         printWriter.print(
-          "java -cp \"JAR_FILE\" edgesys.EdgeSysHeronExecutor "
-          + tempInfo.className
-          + " "
-          + tempInfo.name
-          + " "
-          + tempInfo.idx
-          + " "
-        );
+            "java -cp \"target/*\" edgesys.EdgeSysHeronExecutor "
+                // "java -cp \"JAR_FILE\" edgesys.EdgeSysHeronExecutor "
+                + tempInfo.className
+                + " "
+                + tempInfo.name
+                + " "
+                + tempInfo.idx
+                // Test stuff
+                + " "
+                + "testOutputConfig.yaml"
+                + " localhost" // inputHostName
+                + " localhost" // outputHostname
+                // End test stuff
+
+                + " \n");
         // System.out.println(
         //     "java -cp \"JAR_FILE\" edgesys.EdgeSysHeronExecutor "
         //         + tempInfo.className
@@ -84,7 +91,6 @@ class EdgeSysTopologyBuilder extends TopologyBuilder {
       System.out.println("Error writing commands to file");
       e1.printStackTrace();
     }
-    
 
     // Build targets for streams
 
@@ -174,17 +180,15 @@ class EdgeSysTopologyBuilder extends TopologyBuilder {
 
     Map<Object, Object> tempObject = new HashMap<Object, Object>();
 
-
     // Dump serialized instance to file
     byte[] testArray = Utils.serialize(bolt);
     try {
-      Path path = Paths.get("serializedBolt-"+boltName+".bin");
+      Path path = Paths.get("serializedBolt-" + boltName + ".bin");
       Files.write(path, testArray);
     } catch (IOException e) {
       System.out.println("Error dumping to file");
       e.printStackTrace();
     }
-
 
     // Get stream and fields information from bolt
     DelegateOutputFieldsDeclarer tempDeclarer = new DelegateOutputFieldsDeclarer();
@@ -196,7 +200,8 @@ class EdgeSysTopologyBuilder extends TopologyBuilder {
 
     // Add to deployment info
     for (int i = 0; i < ((Integer) parallelismHint); ++i) {
-      deploymentInfos.add(new DeploymentInfo(boltName, bolt.getClass().getName(), i));
+      // bolt.getClass().getName()
+      deploymentInfos.add(new DeploymentInfo(boltName, boltName, i));
     }
 
     runTimeConfig.put(boltName, tempObject);

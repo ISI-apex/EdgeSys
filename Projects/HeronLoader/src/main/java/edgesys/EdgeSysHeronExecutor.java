@@ -37,6 +37,12 @@ import com.twitter.heron.api.tuple.Tuple;
 import com.twitter.heron.api.tuple.Values;
 import com.twitter.heron.api.utils.Utils;
 import com.twitter.heron.common.utils.topology.GeneralTopologyContextImpl;
+import edgesys.util.EdgeSysHeronTupleData;
+import edgesys.util.EdgeSysTuple;
+import edgesys.util.groupings.FieldsGrouping;
+import edgesys.util.groupings.IGrouping;
+import edgesys.util.groupings.ShuffleGrouping;
+import examples.videoEdgeWorkload.tools.WorkloadConstants;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -44,6 +50,7 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
@@ -52,9 +59,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.yaml.snakeyaml.Yaml;
-
-import edgesys.util.EdgeSysTuple;
-import examples.videoEdgeWorkload.tools.WorkloadConstants;
 
 // Todos:
 // - Test executing tuple and sending tuples
@@ -70,7 +74,7 @@ class EdgeSysHeronExecutor {
     String inputHostName;
     String outputHostName;
 
-    IRichBolt boltInstance=null;
+    IRichBolt boltInstance = null;
 
     String inputQueueName;
     String inputExchangeName;
@@ -81,8 +85,10 @@ class EdgeSysHeronExecutor {
 
     // Get configuration from command line
     if (args.length != 6) {
-      System.out.println("Usage: " + EdgeSysHeronExecutor.class.getName()
-          + " BoltClassName instanceBoltName instanceIndex configFile inputHost outputHost");
+      System.out.println(
+          "Usage: "
+              + EdgeSysHeronExecutor.class.getName()
+              + " BoltClassName instanceBoltName instanceIndex configFile inputHost outputHost");
     }
     boltClassName = args[0];
     boltInstanceName = args[1];
@@ -110,15 +116,17 @@ class EdgeSysHeronExecutor {
 
     // Create OutputCollectors
     outputExchangeName = "testExchange";
-    EdgeSysOutputCollector edgeSysOutputCollector = new EdgeSysOutputCollector(outputHostName, outputExchangeName,
-        runTimeConfig);
+    @SuppressWarnings("unchecked")
+    EdgeSysOutputCollector edgeSysOutputCollector =
+        new EdgeSysOutputCollector(
+            boltInstanceName, outputHostName, outputExchangeName, runTimeConfig);
 
     // Load bolt class
     // boltInstance = loadRichBolt(boltClassName);
     // Load serialized instance instead of new
-    byte[] data2=null;
+    byte[] data2 = null;
     try {
-      Path path = Paths.get("serializedBolt-"+boltInstanceName+".bin");
+      Path path = Paths.get("serializedBolt-" + boltInstanceName + ".bin");
       data2 = Files.readAllBytes(path);
       boltInstance = (IRichBolt) Utils.deserialize(data2);
     } catch (IOException e) {
@@ -132,34 +140,34 @@ class EdgeSysHeronExecutor {
 
     // **** TODO: remove this
     // At this point we should be able to test outputs
-    for (int i = 0; i < 5; ++i) {
-      Tuple tempTuple = new EdgeSysTuple(
-        "default", 
-        new Fields(WorkloadConstants.FIELD_IMAGE_ID, "message"),
-        new Values(2121+i, "HelloWorldTest"),
-        "testComponentStub",
-        5);
-      boltInstance.execute(tempTuple);
-    }
+    // for (int i = 0; i < 5; ++i) {
+    //   Tuple tempTuple = new EdgeSysTuple(
+    //     "default",
+    //     new Fields(WorkloadConstants.FIELD_IMAGE_ID, WorkloadConstants.FIELD_IMAGE_MODE,
+    // "message"),
+    //     new Values(2121+i, 200, "HelloWorldTest"),
+    //     "testComponentStub",
+    //     5);
+    //   boltInstance.execute(tempTuple);
+    // }
 
     // Create input readers, loop and execute
     inputQueueName = boltInstanceName + "_" + instanceIndex;
     inputExchangeName = "testExchange";
-    // runConsumer(
-    // boltInstance, edgeSysOutputCollector, inputQueueName, inputHostName,
-    // inputExchangeName);
+    runConsumer(
+        boltInstance, edgeSysOutputCollector, inputQueueName, inputHostName, inputExchangeName);
 
     edgeSysOutputCollector.close();
     System.out.println("End of main...");
   }
 
-  public static class EdgeSysHeronTupleData {
-    String value;
-    EdgeSysTuple tuple;
-  }
-
-  static void runConsumer(IRichBolt boltInstance, EdgeSysOutputCollector outputCollector, String routingKey,
-      String inputHost, String inputExchange) throws Exception {
+  static void runConsumer(
+      IRichBolt boltInstance,
+      EdgeSysOutputCollector outputCollector,
+      String routingKey,
+      String inputHost,
+      String inputExchange)
+      throws Exception {
 
     Kryo kryo = new Kryo();
     kryo.register(EdgeSysHeronTupleData.class);
@@ -181,42 +189,47 @@ class EdgeSysHeronExecutor {
 
     // Bind specific routing key
     channel.queueBind(
-      tempQueueName, // Queue name
-      inputExchange, // Exchange name
-      routingKey // routingKey
-      );
+        tempQueueName, // Queue name
+        inputExchange, // Exchange name
+        routingKey // routingKey
+        );
 
     System.out.println(" [*] Waiting for messages. To exit press CTRL+C");
 
-    DeliverCallback deliverCallback = (consumerTag, delivery) -> {
-      // ByteBuffer tempBuf = output.getByteBuffer();
-      ByteBufferInput input = new ByteBufferInput(delivery.getBody());
+    DeliverCallback deliverCallback =
+        (consumerTag, delivery) -> {
 
-      // Deserialize data
-      EdgeSysHeronTupleData receivedData = kryo.readObject(input, EdgeSysHeronTupleData.class);
-      input.close();
+          // ByteBufferInput input = new ByteBufferInput(delivery.getBody());
 
-      // Error handling
-      // // assertThat(receivedData.value).isEqualTo(object.value);
-      // System.out.println("Deserialized value: " + receivedData.value);
+          // Deserialize data
+          // EdgeSysHeronTupleData receivedData = kryo.readObject(input,
+          // EdgeSysHeronTupleData.class);
+          // input.close();
 
-      // // String message = new String(delivery.getBody(), "UTF-8");
-      // System.out.println(" [x] Received '" + receivedData.value + "'");
+          EdgeSysHeronTupleData receivedData =
+              (EdgeSysHeronTupleData) Utils.deserialize(delivery.getBody());
 
-      // Edgesys stuff
-      Tuple tempTuple = receivedData.tuple;
-      outputCollector.setContext(tempTuple);
+          // Error handling
+          // // assertThat(receivedData.value).isEqualTo(object.value);
+          // System.out.println("Deserialized value: " + receivedData.value);
 
-      boltInstance.execute(tempTuple);
-    };
+          // // String message = new String(delivery.getBody(), "UTF-8");
+          // System.out.println(" [x] Received '" + receivedData.value + "'");
+
+          // Edgesys stuff
+          Tuple tempTuple = receivedData.tuple;
+          outputCollector.setContext(tempTuple);
+
+          boltInstance.execute(tempTuple);
+        };
 
     // Start consuming
-    channel.basicConsume(tempQueueName, // queue name
+    channel.basicConsume(
+        tempQueueName, // queue name
         true, // autoAck
         deliverCallback, // DeliverCallback
-        consumerTag -> {
-        } // CancelCallback
-    );
+        consumerTag -> {} // CancelCallback
+        );
 
     // Program will loop here as channel and connection are open
     // Utils.sleep(10000);
@@ -286,26 +299,25 @@ class EdgeSysHeronExecutor {
       return null;
     }
 
-    public void setTaskData(String name, Object data) {
-    }
+    public void setTaskData(String name, Object data) {}
 
     public Object getTaskData(String name) {
       return null;
     }
 
-    public void addTaskHook(ITaskHook hook) {
-    }
+    public void addTaskHook(ITaskHook hook) {}
 
     public Collection<ITaskHook> getHooks() {
       return null;
     }
 
-    public <T, U, V> ReducedMetric<T, U, V> registerMetric(String name, IReducer<T, U, V> reducer,
-        int timeBucketSizeInSecs) {
+    public <T, U, V> ReducedMetric<T, U, V> registerMetric(
+        String name, IReducer<T, U, V> reducer, int timeBucketSizeInSecs) {
       return null;
     }
 
-    public <T> CombinedMetric<T> registerMetric(String name, ICombiner<T> combiner, int timeBucketSizeInSecs) {
+    public <T> CombinedMetric<T> registerMetric(
+        String name, ICombiner<T> combiner, int timeBucketSizeInSecs) {
       return null;
     }
 
@@ -353,7 +365,8 @@ class EdgeSysHeronExecutor {
       return 0;
     }
 
-    public <T extends IMetric<U>, U> T registerMetric(String name, T metric, int timeBucketSizeInSecs) {
+    public <T extends IMetric<U>, U> T registerMetric(
+        String name, T metric, int timeBucketSizeInSecs) {
       return null;
     }
   }
@@ -368,14 +381,26 @@ class EdgeSysHeronExecutor {
     ByteBufferOutput output;
     Connection connection;
     Channel channel;
+    String boltInstanceName;
     Map<String, Object> runTimeConfig;
 
-    public EdgeSysOutputCollector(IOutputCollector delegate, String outputHost, String outputExchange,
+    Map<String, List<IGrouping>> groupings;
+    Map<String, List<String>> streamFields;
+
+    public EdgeSysOutputCollector(
+        IOutputCollector delegate,
+        String boltInstanceName,
+        String outputHost,
+        String outputExchange,
         Map<String, Object> runTimeConfig) {
+
       super(delegate);
 
       this.outputExchange = outputExchange;
       this.runTimeConfig = runTimeConfig;
+      this.boltInstanceName = boltInstanceName;
+
+      setupGroupings();
 
       // Setup Kyro and buffers for serialization
       int bufferSize = 10240;
@@ -398,16 +423,145 @@ class EdgeSysHeronExecutor {
       }
     }
 
-    void close() {
-      try {
-        channel.close();
-        connection.close();
-      } catch (Exception e) {
+    @SuppressWarnings("unchecked")
+    void setupGroupings() {
+      // Build out stream configurations
+      groupings = new HashMap<String, List<IGrouping>>();
+      streamFields = new HashMap<String, List<String>>();
+
+      Map<String, Object> boltConfig =
+          (Map<String, Object>) runTimeConfig.get(this.boltInstanceName);
+
+      // System.out.println(boltInstanceName);
+      // Yaml yaml = new Yaml();
+      // String output = yaml.dump(boltConfig);
+      // System.out.println("Config at outputcollector");
+      // System.out.println(output);
+
+      /*
+      instances: 3
+      streams:
+        default:
+          fields: [IMAGE_ID, IMAGE_MODE]
+          targets:
+            printBolt: {type: shuffle}
+      */
+      // Object boltConfig = boltConfig.get()
+      // @SuppressWarnings("unchecked")
+      for (Map.Entry<String, Object> streamEntry :
+          ((Map<String, Object>) boltConfig.get("streams")).entrySet()) {
+        System.out.println("StreamEntry: " + streamEntry.getKey());
+        if (!groupings.containsKey(streamEntry.getKey())) {
+          groupings.put(streamEntry.getKey(), new ArrayList<IGrouping>());
+        }
+
+        if (!streamFields.containsKey(streamEntry.getKey())) {
+          streamFields.put(
+              streamEntry.getKey(),
+              ((List<String>) ((Map<String, Object>) streamEntry.getValue()).get("fields")));
+        }
+
+        Map<String, Object> targetsMap =
+            ((Map<String, Object>) ((Map<String, Object>) streamEntry.getValue()).get("targets"));
+        for (Map.Entry<String, Object> targetEntryMap :
+            ((Map<String, Object>) targetsMap).entrySet()) {
+          System.out.println("\tTargetEntry: " + targetEntryMap.getKey());
+
+          System.out.println(
+              "\tTarget has : "
+                  + ((Map<String, Integer>) runTimeConfig.get(targetEntryMap.getKey()))
+                      .get("instances"));
+
+          Map<String, String> typeMap = ((Map<String, String>) targetEntryMap.getValue());
+          System.out.println("\tType: " + typeMap.get("type"));
+          System.out.println(
+              "\tFields: "
+                  + ((List<String>) ((Map<String, Object>) streamEntry.getValue()).get("fields")));
+
+          if (typeMap.get("type").equals("shuffle")) {
+            System.out.println("\t\tCreating shuffle");
+            groupings
+                .get(streamEntry.getKey())
+                .add(
+                    new ShuffleGrouping(
+                        targetEntryMap.getKey(),
+                        ((Map<String, Integer>) runTimeConfig.get(targetEntryMap.getKey()))
+                            .get("instances")));
+
+            // Test stuff
+            // IGrouping testGrouping = new ShuffleGrouping(targetEntryMap.getKey(),
+            //
+            // ((Map<String,Integer>)runTimeConfig.get(targetEntryMap.getKey())).get("instances"));
+            // for(int i=0;i<10;i++) {
+            //   System.out.println(testGrouping.getNextTargetIds(null));
+            // }
+          } else if (typeMap.get("type").equals("fields")) {
+            System.out.println("\t\tCreating fields");
+            groupings
+                .get(streamEntry.getKey())
+                .add(
+                    new FieldsGrouping(
+                        targetEntryMap.getKey(),
+                        ((Map<String, Integer>) runTimeConfig.get(targetEntryMap.getKey()))
+                            .get("instances"),
+                        ((List<String>)
+                            ((Map<String, Object>) streamEntry.getValue()).get("fields"))));
+
+            // Test stuff
+            // IGrouping testGrouping = new FieldsGrouping(targetEntryMap.getKey(),
+            //   ((Map<String,Integer>)runTimeConfig.get(targetEntryMap.getKey())).get("instances"),
+            //   ((List<String>)( (Map<String, Object>) streamEntry.getValue()).get("fields")));
+            //   for(int i=0;i<10;i++) {
+            //     EdgeSysTuple tempTuple = new EdgeSysTuple(
+            //       "default",
+            //       new Fields(WorkloadConstants.FIELD_IMAGE_ID,
+            // WorkloadConstants.FIELD_IMAGE_MODE, "message"),
+            //       new Values(2121+i, 200, "HelloWorldTest"),
+            //       "testComponentStub",
+            //       5);
+            //     System.out.println(testGrouping.getNextTargetIds(tempTuple));
+            //   }
+          } else {
+            System.out.println("\t\tError, invalid grouping" + typeMap.get("type"));
+          }
+        }
       }
+
+      /*
+      Map<String->List<IGrouping>>
+      Stream
+        IGrouping (bolt1)
+        IGrouping (bolt2)
+
+      Create:
+      For stream in config[streams]:
+        Create entry in map
+        For target in config[stream][targets]
+          Create based on config[stream][targets][target][type]
+
+      Emit:
+      for iGrouping in map[stream]:
+        get list of targets
+        for target in targets:
+          emit
+      */
+
     }
 
-    public EdgeSysOutputCollector(String outputHost, String outputExchange, Map<String, Object> runTimeConfig) {
-      this(null, outputHost, outputExchange, runTimeConfig);
+    void close() {
+      // try {
+      //   channel.close();
+      //   connection.close();
+      // } catch (Exception e) {
+      // }
+    }
+
+    public EdgeSysOutputCollector(
+        String boltInstanceName,
+        String outputHost,
+        String outputExchange,
+        Map<String, Object> runTimeConfig) {
+      this(null, boltInstanceName, outputHost, outputExchange, runTimeConfig);
     }
 
     public List<Integer> emit(String streamId, Tuple anchor, List<Object> tuple) {
@@ -471,37 +625,44 @@ class EdgeSysHeronExecutor {
       LinkedList<Integer> sentIds = new LinkedList<Integer>(); // IDs that we sent to
       String routingKey = null;
 
-      // TODO: figure out which instance to send using groupings
-
       // Build tuple into EdgeSys and send
       List<String> tempFields = null;
-      EdgeSysTuple tempTuple = new EdgeSysTuple(
-        streamId, 
-        new Fields(tempFields), // fields
-        tuple, // values
-        null, // sourceComponent
-        null // sourceTask
-      );
+      EdgeSysTuple tempTuple =
+          new EdgeSysTuple(
+              streamId,
+              new Fields(streamFields.get(streamId)), // fields
+              tuple, // values
+              null, // sourceComponent
+              null // sourceTask
+              );
+
+      // Figure out which instance to send using groupings
+      LinkedList<String> sendTargetList = new LinkedList<String>();
+      for (IGrouping groupingTarget : groupings.get(streamId)) {
+        sendTargetList.addAll(groupingTarget.getNextTargetIds(tempTuple));
+      }
 
       // Publish message to queue, payload is byte array
-
       EdgeSysHeronTupleData tempPayload = new EdgeSysHeronTupleData();
       tempPayload.tuple = tempTuple;
 
-      kryo.writeObject(output, tempPayload);
-      // channel.basicPublish("", QUEUE_NAME, null, output.toBytes());
-      // System.out.println(" [x] Sent '" + message + "'");
-      // System.out.println("Message sent successfully");
+      // kryo.writeObject(output, tempPayload);
 
-      try {
-        channel.basicPublish(outputExchange, // Exchange name
-            routingKey, // routingKey
-            null, // props
-            output.toBytes() // Payload
-        );
-      } catch (IOException e) {
-        System.out.println("Error with sending tuple");
-        e.printStackTrace();
+      System.out.println("Sending to: " + sendTargetList);
+
+      for (String targetName : sendTargetList) {
+        try {
+          routingKey = targetName;
+          channel.basicPublish(
+              outputExchange, // Exchange name
+              routingKey, // routingKey
+              null, // props
+              // output.toBytes() // Payload
+              Utils.serialize(tempPayload));
+        } catch (IOException e) {
+          System.out.println("Error with sending tuple");
+          e.printStackTrace();
+        }
       }
 
       return null;
