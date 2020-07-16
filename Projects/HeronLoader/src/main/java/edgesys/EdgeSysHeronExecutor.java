@@ -3,6 +3,7 @@ package edgesys;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.ByteBufferInput;
 import com.esotericsoftware.kryo.io.ByteBufferOutput;
+import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.BuiltinExchangeType;
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
@@ -66,6 +67,7 @@ import org.yaml.snakeyaml.Yaml;
 
 class EdgeSysHeronExecutor {
 
+  
   public static void main(String[] args) throws Exception {
     String boltClassName;
     String boltInstanceName;
@@ -115,11 +117,11 @@ class EdgeSysHeronExecutor {
     System.out.println(output);
 
     // Create OutputCollectors
-    outputExchangeName = "testExchange";
+    outputExchangeName = "testExchangeOut";
     @SuppressWarnings("unchecked")
     EdgeSysOutputCollector edgeSysOutputCollector =
         new EdgeSysOutputCollector(
-            boltInstanceName, outputHostName, outputExchangeName, runTimeConfig);
+            boltInstanceName, instanceIndex, outputHostName, outputExchangeName, runTimeConfig);
 
     // Load bolt class
     // boltInstance = loadRichBolt(boltClassName);
@@ -169,12 +171,21 @@ class EdgeSysHeronExecutor {
       String inputExchange)
       throws Exception {
 
+    String userName = "cat";
+    String password = "meow";
+    String virtualHost = "/";
+    Integer portNumber = 5672;
+
     Kryo kryo = new Kryo();
     kryo.register(EdgeSysHeronTupleData.class);
 
     // Create connection and channel
     ConnectionFactory factory = new ConnectionFactory();
     factory.setHost(inputHost);
+    factory.setUsername(userName);
+    factory.setPassword(password);
+    factory.setVirtualHost(virtualHost);
+    factory.setPort(portNumber);
     Connection connection = factory.newConnection();
     Channel channel = connection.createChannel();
 
@@ -382,6 +393,7 @@ class EdgeSysHeronExecutor {
     Connection connection;
     Channel channel;
     String boltInstanceName;
+    Integer instanceIndex;
     Map<String, Object> runTimeConfig;
 
     Map<String, List<IGrouping>> groupings;
@@ -390,15 +402,22 @@ class EdgeSysHeronExecutor {
     public EdgeSysOutputCollector(
         IOutputCollector delegate,
         String boltInstanceName,
+        Integer instanceIndex,
         String outputHost,
         String outputExchange,
         Map<String, Object> runTimeConfig) {
 
       super(delegate);
 
+      String userName = "cat";
+      String password = "meow";
+      String virtualHost = "/";
+      Integer portNumber = 5672;
+
       this.outputExchange = outputExchange;
       this.runTimeConfig = runTimeConfig;
       this.boltInstanceName = boltInstanceName;
+      this.instanceIndex = instanceIndex;
 
       setupGroupings();
 
@@ -411,6 +430,10 @@ class EdgeSysHeronExecutor {
       // Create output channel
       ConnectionFactory factory = new ConnectionFactory();
       factory.setHost(outputHost);
+      factory.setUsername(userName);
+      factory.setPassword(password);
+      factory.setVirtualHost(virtualHost);
+      factory.setPort(portNumber);
       // Try to create connection and channel
       try {
         connection = factory.newConnection();
@@ -558,10 +581,11 @@ class EdgeSysHeronExecutor {
 
     public EdgeSysOutputCollector(
         String boltInstanceName,
+        Integer instanceIndex,
         String outputHost,
         String outputExchange,
         Map<String, Object> runTimeConfig) {
-      this(null, boltInstanceName, outputHost, outputExchange, runTimeConfig);
+      this(null, boltInstanceName, instanceIndex, outputHost, outputExchange, runTimeConfig);
     }
 
     public List<Integer> emit(String streamId, Tuple anchor, List<Object> tuple) {
@@ -653,10 +677,19 @@ class EdgeSysHeronExecutor {
       for (String targetName : sendTargetList) {
         try {
           routingKey = targetName;
+          routingKey = boltInstanceName+"_"+instanceIndex+"Out";
+          System.out.println("Routing key: " + routingKey);
+
+          // Create metadata for target
+          Map<String, Object> headers = new HashMap<String, Object>();
+          headers.put("target", targetName);
+
           channel.basicPublish(
               outputExchange, // Exchange name
               routingKey, // routingKey
-              null, // props
+              new AMQP.BasicProperties.Builder()
+                .headers(headers)
+                .build(), // props
               // output.toBytes() // Payload
               Utils.serialize(tempPayload));
         } catch (IOException e) {

@@ -39,7 +39,9 @@ public class ReceiveLogsDirect {
           String message = new String(delivery.getBody(), "UTF-8");
           System.out.println(
               " [x] Received '" + delivery.getEnvelope().getRoutingKey() + "':'" + message + "'");
-        };
+              System.out.println(
+                " Headers '" + delivery.getProperties().getHeaders().get("target"));
+            };
     channel.basicConsume(
         queueName, // queue name
         true, // autoack

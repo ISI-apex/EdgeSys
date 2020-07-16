@@ -1,5 +1,9 @@
 package tutorial.rabbitmq.tutorial2;
 
+import java.util.HashMap;
+import java.util.Map;
+
+import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.BuiltinExchangeType;
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
@@ -20,11 +24,18 @@ public class EmitLogDirect {
 
       String severity = getSeverity(argv);
       String message = getMessage(argv);
+      
+      Map<String, Object> headers = new HashMap<String, Object>();
+      headers.put("latitude",  51.5252949);
+      headers.put("longitude", -0.0905493);
+      headers.put("target", "testTarget");
 
       channel.basicPublish(
           EXCHANGE_NAME, // Exchange name
           severity, // routingKey
-          null, // props
+          new AMQP.BasicProperties.Builder()
+               .headers(headers)
+               .build(), // props
           message.getBytes("UTF-8") // Payload
           );
       System.out.println(" [x] Sent '" + severity + "':'" + message + "'");

@@ -1,0 +1,3 @@
+java -cp "target/*" edgesys.EdgeSysHeronExecutor split split 0 testOutputConfig.yaml localhost localhost 
+java -cp "target/*" edgesys.EdgeSysHeronExecutor count count 0 testOutputConfig.yaml localhost localhost 
+java -cp "target/*" edgesys.EdgeSysHeronExecutor print print 0 testOutputConfig.yaml localhost localhost 

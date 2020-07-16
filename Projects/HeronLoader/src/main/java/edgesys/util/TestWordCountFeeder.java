@@ -11,8 +11,10 @@ import com.twitter.heron.api.tuple.Values;
 import com.twitter.heron.api.utils.Utils;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
 public class TestWordCountFeeder {
 
@@ -20,11 +22,20 @@ public class TestWordCountFeeder {
     ByteBufferOutput output;
     Kryo kryo;
     String outputHost = "localhost";
-    String outputExchange = "testExchange";
+    String outputExchange = "testExchangeOut";
     Channel channel = null;
     Connection connection = null;
     String streamId = "default";
-    String routingKey = "split_0";
+    String routingKey = "testRoutingKeyExternal";
+
+    String userName = "cat";
+    String password = "meow";
+    String virtualHost = "/";
+    Integer portNumber = 5672;
+
+    Integer numToSend = Integer.valueOf(args[0]);
+    Integer timeBetweenSendMs = Integer.valueOf(args[1]);
+
 
     // Setup Kyro and buffers for serialization
     int bufferSize = 10240;
@@ -35,6 +46,10 @@ public class TestWordCountFeeder {
     // Create output channel
     ConnectionFactory factory = new ConnectionFactory();
     factory.setHost(outputHost);
+    factory.setUsername(userName);
+    factory.setPassword(password);
+    factory.setVirtualHost(virtualHost);
+    factory.setPort(portNumber);
     // Try to create connection and channel
     try {
       connection = factory.newConnection();
@@ -47,6 +62,10 @@ public class TestWordCountFeeder {
     }
 
     List<String> tempFields = Arrays.asList("sentence");
+
+    Map<String, Object> headers = new HashMap<String, Object>();
+    headers.put("target", "split_0");
+
     EdgeSysTuple tempTuple =
         new EdgeSysTuple(
             streamId,
@@ -64,14 +83,14 @@ public class TestWordCountFeeder {
     // kryo.writeObject(output, tempPayload);
 
     try {
-      for (int i = 0; i < 1000; i++) {
+      for (int i = 0; i < numToSend; i++) {
         channel.basicPublish(
             outputExchange, // Exchange name
             routingKey, // routingKey
             null, // props
             Utils.serialize(tempPayload) // Payload
             );
-        // Utils.sleep(200);
+        Utils.sleep(timeBetweenSendMs);
       }
     } catch (IOException e) {
       System.out.println("Error with sending tuple");
