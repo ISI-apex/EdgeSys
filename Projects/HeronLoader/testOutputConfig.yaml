@@ -1,22 +1,22 @@
-print:
+pageViewBolt:
+  instances: 20
+  streams:
+    default:
+      fields: [url, count_one]
+      targets:
+        countBolt:
+          type: fields
+          targetFields: [url]
+countBolt:
+  instances: 20
+  streams:
+    default:
+      fields: [word, count]
+      targets:
+        printBolt: {type: shuffle}
+printBolt:
   instances: 1
   streams:
     defaultStream:
       fields: []
       targets: {}
-split:
-  instances: 1
-  streams:
-    default:
-      fields: [word]
-      targets:
-        count:
-          type: fields
-          targetFields: [word]
-count:
-  instances: 1
-  streams:
-    default:
-      fields: [word, count]
-      targets:
-        print: {type: shuffle}

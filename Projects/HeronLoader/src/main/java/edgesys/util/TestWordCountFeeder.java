@@ -22,11 +22,19 @@ public class TestWordCountFeeder {
     ByteBufferOutput output;
     Kryo kryo;
     String outputHost = "localhost";
-    String outputExchange = "testExchangeOut";
+    String outputExchange;
     Channel channel = null;
     Connection connection = null;
     String streamId = "default";
-    String routingKey = "testRoutingKeyExternal";
+    String routingKey;
+
+    if(EdgeSysFlags.runLocal) {
+      outputExchange = "testExchange";
+      routingKey = "split_0";
+    } else {
+      outputExchange = "testExchangeOut";
+      routingKey = "testRoutingKeyExternal";
+    }
 
     String userName = "cat";
     String password = "meow";
@@ -70,7 +78,8 @@ public class TestWordCountFeeder {
         new EdgeSysTuple(
             streamId,
             new Fields(tempFields), // fields
-            new Values("the cow jumped over the moon"), // values
+            // new Values("the cow jumped over the moon"), // values
+            new Values("USCUSCUSCUSCUSC"), // values
             null, // sourceComponent
             null // sourceTask
             );
@@ -90,6 +99,8 @@ public class TestWordCountFeeder {
             null, // props
             Utils.serialize(tempPayload) // Payload
             );
+        FileUtils.writeToFile("metrics-feeder.txt", (System.nanoTime())+"\n");
+
         Utils.sleep(timeBetweenSendMs);
       }
     } catch (IOException e) {

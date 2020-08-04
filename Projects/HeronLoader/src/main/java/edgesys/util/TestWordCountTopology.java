@@ -5,6 +5,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.TimeUnit;
 
 import com.twitter.heron.common.basics.ByteAmount;
 import com.twitter.heron.api.bolt.BaseBasicBolt;
@@ -21,51 +22,48 @@ import com.twitter.heron.api.tuple.Values;
 import com.twitter.heron.api.utils.Utils;
 import com.twitter.heron.api.topology.TopologyBuilder;
 import com.twitter.heron.api.Config;
-
+import com.twitter.heron.api.HeronSubmitter;
 
 import examples.videoEdgeWorkload.PrintDebugBolt;
 import tutorial.util.HelperRunner;
+import edgesys.util.FileUtils;
 
 /** This is driver as well the topology graph generator */
 public class TestWordCountTopology {
 
-  private TestWordCountTopology() {}
+  private TestWordCountTopology() {
+  }
 
   // Entry point for the topology
   public static void main(String[] args) throws Exception {
 
-    TopologyBuilder builder = new EdgeSysTopologyBuilder();
+    // TopologyBuilder builder = new EdgeSysTopologyBuilder();
+    TopologyBuilder builder = new TopologyBuilder();
 
-    builder.setSpout("sentence", 
-      new RandomSentenceSpout(), 1);
+    System.out.println(args);
+    builder.setSpout("sentence", new RandomSentenceSpout(Integer.valueOf(args[1]), Float.valueOf(args[2])), 1);
 
-    builder.setBolt("split", 
-      new SplitSentenceBolt(), 1)
-      .shuffleGrouping("sentence");
+    builder.setBolt("split", new SplitSentenceBolt(), 1).shuffleGrouping("sentence");
 
-    builder.setBolt("count", 
-      new WordCountBolt(), 1)
-      .fieldsGrouping("split", new Fields("word"));
-    
-    builder.setBolt("print", 
-      new PrintDebugBolt(false, Arrays.asList("word", "count")), 1)
-      .shuffleGrouping("count");
+    builder.setBolt("count", new WordCountBolt(), 1).fieldsGrouping("split", new Fields("word"));
 
+    builder.setBolt("print", new PrintDebugBolt(false, Arrays.asList("word", "count")), 1).shuffleGrouping("count");
 
-
-      Config conf = new Config();
+    Config conf = new Config();
 
     // Resource Configs
-    com.twitter.heron.api.Config.setComponentRam(conf, "sentence", ByteAmount.fromGigabytes(1));
-    com.twitter.heron.api.Config.setComponentRam(conf, "split", ByteAmount.fromGigabytes(1));
-    com.twitter.heron.api.Config.setComponentRam(conf, "count", ByteAmount.fromGigabytes(1));
+    com.twitter.heron.api.Config.setComponentRam(conf, "sentence", ByteAmount.fromGigabytes(2));
+    com.twitter.heron.api.Config.setComponentRam(conf, "split", ByteAmount.fromGigabytes(2));
+    com.twitter.heron.api.Config.setComponentRam(conf, "count", ByteAmount.fromGigabytes(2));
     com.twitter.heron.api.Config.setContainerCpuRequested(conf, 3);
 
     // submit the topology
-    builder.createTopology();
+    // builder.createTopology();
+    conf.setNumStmgrs(1);
+    HeronSubmitter.submitTopology(args[0], conf, builder.createTopology());
+
     // HelperRunner.runTopology(args, builder.createTopology(), conf);
   }
-
 
   static public class RandomSentenceSpout extends BaseRichSpout {
     private static final long serialVersionUID = 6609868287233339880L;
@@ -73,7 +71,16 @@ public class TestWordCountTopology {
     SpoutOutputCollector collector;
     // Used to generate a random number
     Random rand;
-  
+
+    Integer numToSend;
+    Integer timeBetween;
+    Integer numSent = 0;
+
+    public RandomSentenceSpout(int numToSend, float timeBetween) {
+      this.numToSend = numToSend;
+      this.timeBetween = (int) (timeBetween * 1e3);
+    }
+
     // Open is called when an instance of the class is created
     @Override
     public void open(Map map, TopologyContext topologyContext, SpoutOutputCollector collector) {
@@ -82,25 +89,41 @@ public class TestWordCountTopology {
       // For randomness
       this.rand = new Random();
     }
-  
+
     // Emit data to the stream
     @Override
     public void nextTuple() {
-      // Sleep for a bit
-      Utils.sleep(50);
-      // The sentences that are randomly emitted
-      String[] sentences =
-          new String[] {
-            "the cow jumped over the moon",
-            "an apple a day keeps the doctor away",
-            "four score and seven years ago",
-            "snow white and the seven dwarfs",
-            "i am at two with nature"
-          };
-      // Randomly pick a sentence
-      String sentence = sentences[rand.nextInt(sentences.length)];
-      // Emit the sentence
-      collector.emit(new Values(sentence));
+      if (numSent < numToSend) {
+        // Sleep for a bit
+        // Utils.sleep(timeBetween);
+        try {
+          TimeUnit.MICROSECONDS.sleep(timeBetween);
+        } catch (InterruptedException e) {
+          // TODO Auto-generated catch block
+          e.printStackTrace();
+        }
+
+        // The sentences that are randomly emitted
+        String[] sentences =
+            new String[] {
+              "USCUSCUSCUSCUSC"
+
+              // "the cow jumped over the moon",
+              // "an apple a day keeps the doctor away",
+              // "four score and seven years ago",
+              // "snow white and the seven dwarfs",
+              // "i am at two with nature"
+            };
+        // Randomly pick a sentence
+        String sentence = sentences[rand.nextInt(sentences.length)];
+        // Emit the sentence
+        collector.emit(new Values(sentence));
+
+        FileUtils.writeToFile("metrics-spout.txt", (System.nanoTime())+"\n");
+
+        numSent = numSent+1;
+      }
+
     }
   
     // Declare the output fields. In this case, an sentence
@@ -146,6 +169,7 @@ public class TestWordCountTopology {
       count++;
       counts.put(word, count);
       collector.emit(new Values(word, count));
+      FileUtils.writeToFile("metrics-count.txt", (System.nanoTime())+"\n");
     }
   
     // Declare that this emits a tuple containing two fields; word and count
@@ -180,6 +204,7 @@ public class TestWordCountTopology {
         // if it's an actual word, emit it
         if (!word.equals("")) {
           collector.emit(new Values(word));
+          FileUtils.writeToFile("metrics-split.txt", (System.nanoTime())+"\n");
         }
       }
     }

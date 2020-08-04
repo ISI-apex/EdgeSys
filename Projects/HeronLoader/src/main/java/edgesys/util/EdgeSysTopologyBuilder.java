@@ -31,7 +31,7 @@ import org.yaml.snakeyaml.Yaml;
 
 // import dynamo2.tools.DynamoConstants;
 
-class EdgeSysTopologyBuilder extends TopologyBuilder {
+public class EdgeSysTopologyBuilder extends TopologyBuilder {
   private LinkedList<DeploymentInfo> deploymentInfos = new LinkedList<DeploymentInfo>();
   Map<Object, Object> runTimeConfig = new HashMap<Object, Object>();
 

@@ -29,7 +29,11 @@ public class FieldsGrouping implements IGrouping {
     for (String tempField : fields) {
       targetIndex += getHashCode(tuple.getValueByField(tempField)) % primeNumber;
     }
-    result.add(targetList.get((targetIndex++) % targetList.size()));
+    // Keep target index in limits
+    targetIndex = targetIndex % targetList.size();
+    // Make sure targetIndex is positive
+    targetIndex = targetIndex >= 0 ? targetIndex : targetIndex + this.targetList.size();
+    result.add(targetList.get((targetIndex) % targetList.size()));
     return result;
   }
 

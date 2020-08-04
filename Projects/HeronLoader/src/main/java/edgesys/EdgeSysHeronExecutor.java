@@ -38,12 +38,17 @@ import com.twitter.heron.api.tuple.Tuple;
 import com.twitter.heron.api.tuple.Values;
 import com.twitter.heron.api.utils.Utils;
 import com.twitter.heron.common.utils.topology.GeneralTopologyContextImpl;
+
+import edgesys.util.EdgeSysFlags;
 import edgesys.util.EdgeSysHeronTupleData;
 import edgesys.util.EdgeSysTuple;
+import edgesys.util.FileUtils;
 import edgesys.util.groupings.FieldsGrouping;
 import edgesys.util.groupings.IGrouping;
 import edgesys.util.groupings.ShuffleGrouping;
 import examples.videoEdgeWorkload.tools.WorkloadConstants;
+import scala.concurrent.impl.FutureConvertersImpl.P;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -117,7 +122,11 @@ class EdgeSysHeronExecutor {
     System.out.println(output);
 
     // Create OutputCollectors
-    outputExchangeName = "testExchangeOut";
+    if(EdgeSysFlags.runLocal) {
+      outputExchangeName = "testExchange";
+    } else {
+      outputExchangeName = "testExchangeOut";
+    }
     @SuppressWarnings("unchecked")
     EdgeSysOutputCollector edgeSysOutputCollector =
         new EdgeSysOutputCollector(
@@ -217,8 +226,17 @@ class EdgeSysHeronExecutor {
           // EdgeSysHeronTupleData.class);
           // input.close();
 
+          Long beforeTime = System.nanoTime();
+
           EdgeSysHeronTupleData receivedData =
               (EdgeSysHeronTupleData) Utils.deserialize(delivery.getBody());
+
+          Map<String, Object> props = delivery.getProperties().getHeaders();
+          // Yaml yaml = new Yaml();
+          // // String output = yaml.dump(runTimeConfig);
+          // System.out.println(yaml.dump(props));
+          // System.out.println(props.get("edgesys_id"));
+          // System.out.println(props.get("target"));
 
           // Error handling
           // // assertThat(receivedData.value).isEqualTo(object.value);
@@ -230,8 +248,11 @@ class EdgeSysHeronExecutor {
           // Edgesys stuff
           Tuple tempTuple = receivedData.tuple;
           outputCollector.setContext(tempTuple);
+          outputCollector.setCurEdgeSysId((Integer)props.get("edgesys_id"));
 
           boltInstance.execute(tempTuple);
+
+          FileUtils.writeToFile("executeLatency-"+routingKey+".txt", (System.nanoTime()-beforeTime)+"\n");
         };
 
     // Start consuming
@@ -398,6 +419,8 @@ class EdgeSysHeronExecutor {
 
     Map<String, List<IGrouping>> groupings;
     Map<String, List<String>> streamFields;
+
+    Integer curEdgeSysId=0;
 
     public EdgeSysOutputCollector(
         IOutputCollector delegate,
@@ -628,6 +651,10 @@ class EdgeSysHeronExecutor {
       emitDirect(taskId, Utils.DEFAULT_STREAM_ID, tuple);
     }
 
+    public void setCurEdgeSysId(Integer newID) {
+      curEdgeSysId = newID;
+    }
+
     public void setContext(Tuple tuple) {
       // TupleData tupleData;
       // if(!TupleInfo.isTickTuple(tuple))
@@ -677,12 +704,17 @@ class EdgeSysHeronExecutor {
       for (String targetName : sendTargetList) {
         try {
           routingKey = targetName;
-          routingKey = boltInstanceName+"_"+instanceIndex+"Out";
+          if(EdgeSysFlags.runLocal) {
+            routingKey = targetName;
+          } else {
+            routingKey = boltInstanceName+"_"+instanceIndex+"Out";
+          }
           System.out.println("Routing key: " + routingKey);
 
           // Create metadata for target
           Map<String, Object> headers = new HashMap<String, Object>();
           headers.put("target", targetName);
+          headers.put("edgesys_id", curEdgeSysId);
 
           channel.basicPublish(
               outputExchange, // Exchange name
