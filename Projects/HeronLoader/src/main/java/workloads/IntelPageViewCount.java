@@ -144,10 +144,10 @@ public static class KafkaStubSpout extends BaseRichSpout {
 		// Utils.sleep(500);
 
 		// Calculate random values for tuples
-		pageCount=getRandomNumberInRange(0,99);
-		status=getRandomNumberInRange(200,500);
-		zipVal=getRandomNumberInRange(0,99);
-		userId=getRandomNumberInRange(0,99);
+		pageCount=getRandomNumberInRange(0,99, curOffset+1);
+		status=getRandomNumberInRange(200,500, curOffset+1);
+		zipVal=getRandomNumberInRange(0,99, curOffset+1);
+		userId=getRandomNumberInRange(0,99, curOffset+1);
 
 		// Construct tuple and emit
 		// System.out.println(String.format("Sending: [%d.%s\t%d\t%d\t%d]", pageCount, pageBase, status, zipVal, userId));
@@ -175,10 +175,10 @@ public static class KafkaStubSpout extends BaseRichSpout {
   @Override
   public void fail(Object o) {
 		// Calculate random values for tuples
-		pageCount=getRandomNumberInRange(0,99);
-		status=getRandomNumberInRange(200,500);
-		zipVal=getRandomNumberInRange(0,99);
-		userId=getRandomNumberInRange(0,99);
+		pageCount=getRandomNumberInRange(0,99, ((Integer)o)+1);
+		status=getRandomNumberInRange(200,500, ((Integer)o)+1);
+		zipVal=getRandomNumberInRange(0,99, ((Integer)o)+1);
+		userId=getRandomNumberInRange(0,99, ((Integer)o)+1);
 
 		// Construct tuple and emit
 		// System.out.println(String.format("Sending: [%d.%s\t%d\t%d\t%d]", pageCount, pageBase, status, zipVal, userId));
@@ -192,12 +192,12 @@ public static class KafkaStubSpout extends BaseRichSpout {
   }
 
 	// https://www.mkyong.com/java/java-generate-random-integers-in-a-range/
-	private  int getRandomNumberInRange(int min, int max) {
+	private  int getRandomNumberInRange(int min, int max, int seed) {
 		if (min >= max) {
 			throw new IllegalArgumentException("max must be greater than min");
 		}
 
-		Random r = new Random();
+		Random r = new Random(seed);
 		return r.nextInt((max - min) + 1) + min;
 	}
 }

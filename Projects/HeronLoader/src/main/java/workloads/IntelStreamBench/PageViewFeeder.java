@@ -104,10 +104,10 @@ public class PageViewFeeder {
 
         // Generate proper tuple for PageViewCount
         // Calculate random values for tuples
-        pageCount=getRandomNumberInRange(0,99);
-        status=getRandomNumberInRange(200,500);
-        zipVal=getRandomNumberInRange(0,99);
-        userId= getRandomNumberInRange(0, 99);
+        pageCount=getRandomNumberInRange(0,99, edgeSysID);
+        status=getRandomNumberInRange(200,500, edgeSysID);
+        zipVal=getRandomNumberInRange(0,99, edgeSysID);
+        userId= getRandomNumberInRange(0, 99, edgeSysID);
 
         EdgeSysTuple tempTuple = new EdgeSysTuple(streamId, new Fields(tempFields), // fields
             // new Values("the cow jumped over the moon"), // values
@@ -150,12 +150,12 @@ public class PageViewFeeder {
   }
 
   // https://www.mkyong.com/java/java-generate-random-integers-in-a-range/
-  private static int getRandomNumberInRange(int min, int max) {
+  private static int getRandomNumberInRange(int min, int max, int seed) {
 		if (min >= max) {
 			throw new IllegalArgumentException("max must be greater than min");
 		}
 
-		Random r = new Random();
+		Random r = new Random(seed);
 		return r.nextInt((max - min) + 1) + min;
 	}
 
