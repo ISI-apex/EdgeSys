@@ -1,0 +1,34 @@
+README
+
+
+
+
+
+
+Update username in setEnvironmentVars.bash
+	USER_NAME
+
+New install: 
+	Set TMP_PREFIX in setEnvironmentVars.bash
+	Run hpcInstall.sh
+
+	Ensure that you have a working .pex folder:
+		mkdir ~/.pex
+		mkdir ~/.pex/install
+
+
+Running:
+	Set cluster name to whatever you want in setEnvironmentVars.bash
+	CLUSTER_NAME
+	This should be unique for each cluster you want to start on HPCC
+
+
+Heron:
+	Configurations are in dynamo-data github repository. Simply redirect configuration in build directory to new configs
+		dynamic_fault_tolerance/configurations/heron-0.17.8
+
+		Example: 
+			cd $TMP_PREFIX/heron;mv conf confOld;ln -s /home/rcf-proj2/jnw/geoffret/dynamo-data-github/dynamic_fault_tolerance/configurations/heron-0.17.8/ conf; cd -
+
+	IMPORTANT: 
+		Need to setup new heron configuration folder for each "cluster" on HPC. Simply compare conf/exampleHPCC and exampleHPCC2 to find differences

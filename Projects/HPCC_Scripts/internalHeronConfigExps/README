@@ -1,0 +1,1 @@
+This directory contains scripts and configs used for the Heron internal parameter sweep. To use, move everything in this directory to the hpcc_scripts directory and run from there.
