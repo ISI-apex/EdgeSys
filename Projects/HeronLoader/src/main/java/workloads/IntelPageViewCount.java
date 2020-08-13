@@ -17,6 +17,7 @@ import com.twitter.heron.api.topology.TopologyContext;
 import com.twitter.heron.api.tuple.Fields;
 import com.twitter.heron.api.tuple.Tuple;
 import com.twitter.heron.api.tuple.Values;
+import com.twitter.heron.common.basics.ByteAmount;
 
 import examples.videoEdgeWorkload.PrintDebugBolt;
 import workloads.IntelStreamBench.PageView;
@@ -35,8 +36,8 @@ public final class IntelPageViewCount {
 
 
 	public static void main(String[] args) throws Exception {
-		TopologyBuilder builder = new TopologyBuilder();
-        // TopologyBuilder builder = new EdgeSysTopologyBuilder();
+		// TopologyBuilder builder = new TopologyBuilder();
+        TopologyBuilder builder = new EdgeSysTopologyBuilder();
 
         final int spoutNum =  DEFAULT_SPOUT_NUM;
 		final int viewBoltNum = DEFAULT_VIEW_BOLT_NUM;
@@ -85,6 +86,13 @@ public final class IntelPageViewCount {
 		// conf.setDebug(true);
 		conf.setMaxSpoutPending(1);
 		conf.setMessageTimeoutSecs(600);
+
+		// Resource Configs
+		com.twitter.heron.api.Config.setComponentRam(conf, "pageViewBolt", ByteAmount.fromGigabytes(2));
+		com.twitter.heron.api.Config.setComponentRam(conf, "countBolt", ByteAmount.fromGigabytes(2));
+		// com.twitter.heron.api.Config.setComponentRam(conf, "printBolt", ByteAmount.fromGigabytes(2));
+		com.twitter.heron.api.Config.setContainerCpuRequested(conf, 3);
+
 
 		Config.setSerializationClassName(conf,
 				"com.twitter.heron.api.serializer.JavaSerializer");
